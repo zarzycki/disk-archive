@@ -54,8 +54,10 @@ HASHED_TMP=$(mktemp)
 
 if [[ -f "$OUTFILE" ]]; then
   echo "Hash file exists: $OUTFILE. Loading already-hashed files to skip..."
+  MD5_FORMAT=false
   if grep -q '^MD5 (' "$OUTFILE"; then
-    # macOS md5 format
+    MD5_FORMAT=true
+    echo "Warning: $OUTFILE is in legacy MD5 format. Stale entry removal will be skipped. Re-run from scratch to migrate to xxhsum." >&2
     grep '^MD5 (' "$OUTFILE" | sed -E 's/^MD5 \((.+)\) =.*/\1/' >> "$HASHED_TMP"
   else
     # Generic format: assume path is second column
@@ -63,6 +65,26 @@ if [[ -f "$OUTFILE" ]]; then
   fi
   sort -u "$HASHED_TMP" -o "$HASHED_TMP"
   echo "$(wc -l < "$HASHED_TMP") file(s) already hashed — will be skipped."
+
+  # Remove stale entries: files recorded in a previous run but since deleted from disk
+  CURRENT_TMP=$(mktemp)
+  find "$DIR" \( -path '*/.*' -prune \) -o -type f -size +1k -print | sort > "$CURRENT_TMP"
+  STALE_TMP=$(mktemp)
+  comm -23 "$HASHED_TMP" "$CURRENT_TMP" > "$STALE_TMP"
+  STALE_COUNT=$(wc -l < "$STALE_TMP" | tr -d ' ')
+  if [[ "$STALE_COUNT" -gt 0 ]]; then
+    if [[ "$MD5_FORMAT" == true ]]; then
+      echo "Warning: $STALE_COUNT stale entry/entries detected but removal skipped for legacy MD5-format file." >&2
+    else
+      echo "$STALE_COUNT stale entry/entries found (deleted from disk) — removing from $OUTFILE..."
+      CLEANED=$(mktemp)
+      awk 'NR==FNR{stale[$0]=1; next} !($2 in stale)' "$STALE_TMP" "$OUTFILE" > "$CLEANED"
+      mv "$CLEANED" "$OUTFILE"
+    fi
+  else
+    echo "No stale entries found."
+  fi
+  rm -f "$CURRENT_TMP" "$STALE_TMP"
 else
   echo "Hash file does not exist. All files will be hashed."
 fi
