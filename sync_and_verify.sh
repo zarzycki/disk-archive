@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script syncs a source directory to a destination using rsync, then
-# verifies the transfer by comparing MD5 checksums of all files. If the
+# verifies the transfer by comparing checksums of all files. If the
 # directories are identical, it prints (but does not execute) an rm command
 # to remove the source. Checksum files are written to the current working
 # directory.
@@ -15,14 +15,14 @@
 # - [TOOL] : Hash tool to use (default: xxhsum). Use xxhsum, md5, md5sum, sha256sum, etc.
 #
 # Outputs:
-# - SRC_checksums.txt  : MD5 hashes of all files in SRC
-# - DEST_checksums.txt : MD5 hashes of all files in DEST
+# - SRC_checksums.txt  : hashes of all files in SRC
+# - DEST_checksums.txt : hashes of all files in DEST
 #
 # Example Invocation:
 # ./sync_and_verify.sh /Volumes/3KM_DOWNSCALING/jpan/ /Volumes/ERASED
 #
 # Note:
-# - Requires rsync and the macOS md5 utility (standard on macOS).
+# - Requires rsync and a hash tool (default: xxhsum; install with brew install xxhash).
 # - The rm command that would delete the source is commented out for safety;
 #   uncomment it in the script once you are confident the transfer is correct.
 # - Checksum cleanup lines are also commented out; remove them manually after

@@ -21,7 +21,7 @@ A Bash script that recursively hashes files in a directory in parallel, with res
 | `DIR` | `.` | Directory to scan |
 | `TOOL` | `xxhsum` | Hash tool to use (e.g. `xxhsum`, `md5`, `sha256sum`) |
 | `OUTFILE` | `hashes_<dirname>.txt` | File to write results to |
-| `JOBS` | logical CPU count | Number of parallel workers |
+| `JOBS` | `4` | Number of parallel workers |
 
 ### Dependencies
 
@@ -35,7 +35,7 @@ A Bash script that recursively hashes files in a directory in parallel, with res
 Each line in the output file has the format:
 
 ```
-MD5 (path/to/file) = <hash> | size: 12345 bytes | modified: 2026-01-01 12:00:00
+<hash>  path/to/file | size: 12345 bytes | modified: 2026-01-01 12:00:00
 ```
 
 The output file is sorted alphabetically when the run completes (for later lookup and deduplication).
