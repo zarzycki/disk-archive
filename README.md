@@ -5,6 +5,7 @@ Set of scripts for maintaining external MEWAC hard drives. General order is:
 - `turn_off_spotlight.sh` -  If needed (new drive), turn off Mac Spotlight.
 - `check-and-compress-nc.sh` - If needed, compress .nc files
 - `parallel_hash.sh` - Create tree and hash files.
+- `tree_to_html.py` - Convert a tree file into an interactive HTML viewer.
 
 ## parallel_hash.sh
 
@@ -149,6 +150,44 @@ sudo ./turn_off_spotlight.sh /Volumes/VOLUME_NAME
 
 ```bash
 sudo ./turn_off_spotlight.sh /Volumes/MyExternalDrive
+```
+
+## tree_to_html.py
+
+A Python script that converts a `tree -s` directory snapshot into a self-contained, interactive HTML viewer with lazy rendering and filename search.
+
+### Usage
+
+```bash
+python3 tree_to_html.py tree_XXXXX.txt
+```
+
+The output file is named `html_XXXXX.html` in the same directory, where `XXXXX` matches the suffix of the input file.
+
+| Argument | Description |
+|---|---|
+| `tree_XXXXX.txt` | Directory tree file produced by `parallel_hash.sh` |
+
+### Dependencies
+
+- Python 3 — standard on macOS
+
+### Output
+
+A single self-contained `.html` file that can be opened in any browser. The tree data is stored as JSON and rendered lazily — only expanded folders create DOM nodes, so the page loads quickly regardless of tree size.
+
+### Features
+
+- **Collapsible folders** — click any directory to expand or collapse it
+- **Lazy rendering** — child nodes are created on demand when a folder is opened
+- **Filename search** — type any substring to see a flat list of matching files with their full paths; supports `*` (any characters) and `?` (one character) wildcards (e.g. `*.nc`)
+- **Expand all / Collapse all** buttons
+
+### Examples
+
+```bash
+# Produces html_CPT01.html from tree_CPT01.txt
+python3 tree_to_html.py tree_CPT01.txt
 ```
 
 ## sync_and_verify.sh
