@@ -7,11 +7,12 @@
 # directory.
 #
 # Usage:
-# ./sync_and_verify.sh <SRC> <DEST>
+# ./sync_and_verify.sh <SRC> <DEST> [TOOL]
 #
 # Arguments:
 # - <SRC>  : Source directory to sync from
 # - <DEST> : Destination directory to sync to
+# - [TOOL] : Hash tool to use (default: xxhsum). Use xxhsum, md5, md5sum, sha256sum, etc.
 #
 # Outputs:
 # - SRC_checksums.txt  : MD5 hashes of all files in SRC
@@ -27,22 +28,38 @@
 # - Checksum cleanup lines are also commented out; remove them manually after
 #   confirming results.
 
-if [ $# -ne 2 ]; then
-  echo "Usage: $0 <SRC> <DEST>"
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Usage: $0 <SRC> <DEST> [TOOL]"
   exit 1
 fi
 
 SRC="$1"
 DEST="$2"
+TOOL="${3:-xxhsum}"
+
+if ! command -v "$TOOL" >/dev/null 2>&1; then
+  echo "Error: hash tool '$TOOL' is not installed or not in PATH." >&2
+  echo "Install xxhsum with: brew install xxhash" >&2
+  exit 1
+fi
 
 # Sync directories
 rsync -av --progress --stats "$SRC/" "$DEST/"
 
 # Generate checksums in the source directory
-find "$SRC" -type f -exec sh -c 'md5 -q "$1" | xargs echo $(basename "$1")' _ {} \; > "SRC_checksums.txt"
+# $2=root dir, $3=tool; xxhsum/md5sum/sha256sum output hash as first field; md5 (macOS) needs -q for hash-only output
+find "$SRC" -type f -exec sh -c '
+    rel="${1#$2/}"
+    if [ "$3" = "md5" ]; then hash=$(md5 -q "$1"); else hash=$("$3" "$1" | awk "{print \$1}"); fi
+    echo "$hash  $rel"
+' _ {} "$SRC" "$TOOL" \; > "SRC_checksums.txt"
 
 # Generate checksums in the destination directory
-find "$DEST" -type f -exec sh -c 'md5 -q "$1" | xargs echo $(basename "$1")' _ {} \; > "DEST_checksums.txt"
+find "$DEST" -type f -exec sh -c '
+    rel="${1#$2/}"
+    if [ "$3" = "md5" ]; then hash=$(md5 -q "$1"); else hash=$("$3" "$1" | awk "{print \$1}"); fi
+    echo "$hash  $rel"
+' _ {} "$DEST" "$TOOL" \; > "DEST_checksums.txt"
 
 # Compare checksum files
 if [ $(diff "SRC_checksums.txt" "DEST_checksums.txt" | wc -l) -eq 0 ]; then

@@ -19,7 +19,7 @@ A Bash script that recursively hashes files in a directory in parallel, with res
 | Argument | Default | Description |
 |---|---|---|
 | `DIR` | `.` | Directory to scan |
-| `TOOL` | `md5` | Hash tool to use (e.g. `md5`, `sha256sum`) |
+| `TOOL` | `xxhsum` | Hash tool to use (e.g. `xxhsum`, `md5`, `sha256sum`) |
 | `OUTFILE` | `hashes_<dirname>.txt` | File to write results to |
 | `JOBS` | logical CPU count | Number of parallel workers |
 
@@ -28,7 +28,7 @@ A Bash script that recursively hashes files in a directory in parallel, with res
 - `flock` — install with `brew install flock` (this locks files during commands)
 - `tree` — install with `brew install tree`
 - `find`, `xargs`, `stat` — standard on macOS/Linux
-- Your chosen hash tool (e.g. `md5` is built into macOS)
+- Your chosen hash tool (`xxhsum` is the default — install with `brew install xxhash`; `md5` is built into macOS)
 
 ### Output
 
@@ -57,7 +57,7 @@ If the output file already exists from a previous run, the script parses it to f
 
 ```bash
 # Hash all files in /Volumes/DRIVE/
-# Produces: hashes_DRIVE.txt (hash results) and ~/Desktop/tree_DRIVE.txt (directory tree)
+# Produces: hashes_DRIVE.txt (hash results) and tree_DRIVE.txt (directory tree)
 ./parallel_hash.sh /Volumes/DRIVE/
 ```
 
@@ -153,23 +153,24 @@ sudo ./turn_off_spotlight.sh /Volumes/MyExternalDrive
 
 ## sync_and_verify.sh
 
-A Bash script that copies a source directory to a destination with `rsync`, then verifies the transfer by comparing MD5 checksums of every file. If the directories are identical, it prints (but does not execute) the command to remove the source.
+A Bash script that copies a source directory to a destination with `rsync`, then verifies the transfer by comparing checksums of every file. If the directories are identical, it prints (but does not execute) the command to remove the source.
 
 ### Usage
 
 ```bash
-./sync_and_verify.sh <SRC> <DEST>
+./sync_and_verify.sh <SRC> <DEST> [TOOL]
 ```
 
-| Argument | Description |
-|---|---|
-| `SRC` | Source directory to sync from |
-| `DEST` | Destination directory to sync to |
+| Argument | Default | Description |
+|---|---|---|
+| `SRC` | | Source directory to sync from |
+| `DEST` | | Destination directory to sync to |
+| `TOOL` | `xxhsum` | Hash tool to use (e.g. `xxhsum`, `md5`, `sha256sum`) |
 
 ### What It Does
 
 1. Syncs `SRC/` → `DEST/` using `rsync -av --progress --stats`.
-2. Generates `SRC_checksums.txt` and `DEST_checksums.txt` by running `md5` on every file in each directory.
+2. Generates `SRC_checksums.txt` and `DEST_checksums.txt` by hashing every file in each directory using relative paths.
 3. Diffs the two checksum files.
 4. If they match, prints the `rm -rfv` command that would delete the source (the actual `rm` line is commented out for safety).
 5. If they differ, prints the diff output so mismatches can be identified.
@@ -177,7 +178,7 @@ A Bash script that copies a source directory to a destination with `rsync`, then
 ### Dependencies
 
 - `rsync` — standard on macOS
-- `md5` — standard on macOS
+- `xxhsum` — install with `brew install xxhash` (or pass a different tool as the third argument)
 - `find`, `diff` — standard on macOS/Linux
 
 ### Notes
