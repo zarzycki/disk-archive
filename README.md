@@ -14,15 +14,16 @@ A Bash script that recursively hashes files in a directory in parallel, with res
 ### Usage
 
 ```bash
-./parallel_hash.sh [DIR] [TOOL] [OUTFILE] [JOBS]
+./parallel_hash.sh [DIR] [--tool TOOL] [--outfile OUTFILE] [--jobs JOBS] [--outdir OUTDIR]
 ```
 
 | Argument | Default | Description |
 |---|---|---|
-| `DIR` | `.` | Directory to scan |
-| `TOOL` | `xxhsum` | Hash tool to use (e.g. `xxhsum`, `md5`, `sha256sum`) |
-| `OUTFILE` | `hashes_<dirname>.txt` | File to write results to |
-| `JOBS` | `4` | Number of parallel workers |
+| `DIR` | `.` | Directory to scan (positional, not a flag) |
+| `--tool` | `xxhsum` | Hash tool to use (e.g. `xxhsum`, `md5`, `sha256sum`) |
+| `--outfile` | `hashes_<dirname>.txt` | Path to write hash results to |
+| `--jobs` | `4` | Number of parallel workers |
+| `--outdir` | `.` | Directory for all output files (`hashes_*.txt`, `tree_*.txt`, `hash_errors.log`); must already exist |
 
 ### Dependencies
 
@@ -41,7 +42,7 @@ Each line in the output file has the format:
 
 The output file is sorted alphabetically when the run completes (for later lookup and deduplication).
 
-A directory tree snapshot is saved to `./tree_<dirname>.txt`.
+A directory tree snapshot is saved to `tree_<dirname>.txt` in the output directory (`--outdir`, defaults to current directory).
 
 Errors and failed files are logged to `hash_errors.log`. This should generally be an empty file.
 
@@ -53,13 +54,18 @@ If the output file already exists from a previous run, the script parses it to f
 
 ```bash
 # Hash all files in /Volumes/MyDrive using sha256sum, 8 workers
-./parallel_hash.sh /Volumes/MyDrive sha256sum drive_hashes.txt 8
+./parallel_hash.sh /Volumes/MyDrive --tool sha256sum --jobs 8
 ```
 
 ```bash
 # Hash all files in /Volumes/DRIVE/
 # Produces: hashes_DRIVE.txt (hash results) and tree_DRIVE.txt (directory tree)
 ./parallel_hash.sh /Volumes/DRIVE/
+```
+
+```bash
+# Write all output files to a separate folder
+./parallel_hash.sh /Volumes/DRIVE/ --outdir /Volumes/Backup/hashes
 ```
 
 ## check-and-compress-nc.sh

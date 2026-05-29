@@ -2,11 +2,30 @@
 
 # --- Parse arguments ---
 DIR=${1:-.}
-TOOL=${2:-xxhsum}
+shift
+TOOL=xxhsum
+JOBS=4
+OUTDIR=.
+OUTFILE=
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --tool)    TOOL="$2";    shift 2 ;;
+    --outfile) OUTFILE="$2"; shift 2 ;;
+    --jobs)    JOBS="$2";    shift 2 ;;
+    --outdir)  OUTDIR="$2";  shift 2 ;;
+    *) echo "Unknown argument: $1" >&2; exit 1 ;;
+  esac
+done
+
+if [[ ! -d "$OUTDIR" ]]; then
+  echo "Error: --outdir '$OUTDIR' does not exist." >&2
+  exit 1
+fi
+
 VOL_NAME=$(basename "$DIR")
-OUTFILE=${3:-hashes_${VOL_NAME}.txt}
-JOBS=${4:-4}
-ERROR_LOG="hash_errors.log"
+OUTFILE=${OUTFILE:-${OUTDIR}/hashes_${VOL_NAME}.txt}
+ERROR_LOG="${OUTDIR}/hash_errors.log"
 
 echo "Scanning directory: $DIR"
 echo "Hashing tool: $TOOL"
@@ -34,7 +53,7 @@ TOTAL=$(find "$DIR" \( -path '*/.*' -prune \) -o -type f -size +1k -print | wc -
 echo "Total files: $TOTAL"
 
 # --- Save directory tree (optional preview of contents) ---
-TREE_OUT=./tree_${VOL_NAME}.txt
+TREE_OUT="${OUTDIR}/tree_${VOL_NAME}.txt"
 
 echo "Saving directory tree to $TREE_OUT ..."
 if [[ -f "$TREE_OUT" ]]; then
@@ -129,7 +148,7 @@ fi
 # Note:
 #   - This function is exported and executed in parallel by `xargs`.
 #   - It relies on global environment variables: $TOOL, $COUNTER, $FAILED,
-#     $LOCK, $OUTFILE, $TOTAL, $ERROR_LOG.
+#     $SKIPPED, $LOCK, $OUTFILE, $TOTAL, $ERROR_LOG, $HASHED_TMP.
 # -----------------------------------------------------------------------------
 hash_and_count() {
     FILE="$1"
