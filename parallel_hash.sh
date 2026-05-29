@@ -82,8 +82,8 @@ if [[ -f "$OUTFILE" ]]; then
     echo "Warning: $OUTFILE is in legacy MD5 format. Stale entry removal will be skipped. Re-run from scratch to migrate to xxhsum." >&2
     grep '^MD5 (' "$OUTFILE" | sed -E 's/^MD5 \((.+)\) =.*/\1/' >> "$HASHED_TMP"
   else
-    # Generic format: assume path is second column
-    awk '{print $2}' "$OUTFILE" >> "$HASHED_TMP"
+    # Extract path using " | size: " as delimiter to handle filenames with spaces
+    sed 's/^[^ ]*  //; s/ | size: .*$//' "$OUTFILE" >> "$HASHED_TMP"
   fi
   sort -u "$HASHED_TMP" -o "$HASHED_TMP"
   echo "$(wc -l < "$HASHED_TMP") file(s) already hashed — will be skipped."
@@ -101,7 +101,8 @@ if [[ -f "$OUTFILE" ]]; then
       cat "$STALE_TMP"
       # Use a temp file beside OUTFILE to avoid cross-filesystem mv failures (e.g. OneDrive)
       CLEANED=$(mktemp "$(dirname "$OUTFILE")/.cleaned.XXXXXX")
-      awk 'NR==FNR{stale[$0]=1; next} !($2 in stale)' "$STALE_TMP" "$OUTFILE" > "$CLEANED"
+      # Extract full path via delimiter (not $2) to handle filenames with spaces
+      awk 'NR==FNR{stale[$0]=1; next} {path=$0; sub(/^[^ ]+  /, "", path); sub(/ \| size: .*$/, "", path); if (!(path in stale)) print}' "$STALE_TMP" "$OUTFILE" > "$CLEANED"
       mv "$CLEANED" "$OUTFILE" || { echo "Error: failed to update $OUTFILE" >&2; rm -f "$CLEANED"; }
     fi
   else
