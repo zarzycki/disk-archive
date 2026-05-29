@@ -9,6 +9,17 @@ Set of scripts for maintaining external MEWAC hard drives. General order is:
 - `plot_disk_usage.py` - Visualize free/used space across all drives as a bar chart.
 - `archive_disk.sh` - Master driver: runs spotlight, hashing, and HTML generation in one shot.
 
+## Python environment
+
+`plot_disk_usage.py` requires `matplotlib` and `numpy`. Create a dedicated conda environment with:
+
+```bash
+conda create -n disk-archive python=3.11 numpy matplotlib
+conda activate disk-archive
+```
+
+Then run `archive_disk.sh` from a terminal where this environment is active.
+
 ## parallel_hash.sh
 
 A Bash script that recursively hashes files in a directory in parallel, with resume support for interrupted runs.
