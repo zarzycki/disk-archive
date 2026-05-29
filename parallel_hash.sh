@@ -99,9 +99,10 @@ if [[ -f "$OUTFILE" ]]; then
     else
       echo "$STALE_COUNT stale entry/entries found (deleted from disk) — removing from $OUTFILE..."
       cat "$STALE_TMP"
-      CLEANED=$(mktemp)
+      # Use a temp file beside OUTFILE to avoid cross-filesystem mv failures (e.g. OneDrive)
+      CLEANED=$(mktemp "$(dirname "$OUTFILE")/.cleaned.XXXXXX")
       awk 'NR==FNR{stale[$0]=1; next} !($2 in stale)' "$STALE_TMP" "$OUTFILE" > "$CLEANED"
-      mv "$CLEANED" "$OUTFILE"
+      mv "$CLEANED" "$OUTFILE" || { echo "Error: failed to update $OUTFILE" >&2; rm -f "$CLEANED"; }
     fi
   else
     echo "No stale entries found."
