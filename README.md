@@ -4,8 +4,10 @@ Set of scripts for maintaining external MEWAC hard drives. General order is:
 
 - `turn_off_spotlight.sh` -  If needed (new drive), turn off Mac Spotlight.
 - `check-and-compress-nc.sh` - If needed, compress .nc files
-- `parallel_hash.sh` - Create tree and hash files.
+- `parallel_hash.sh` - Create tree, hash, and disk summary files.
 - `tree_to_html.py` - Convert a tree file into an interactive HTML viewer.
+- `plot_disk_usage.py` - Visualize free/used space across all drives as a bar chart.
+- `archive_disk.sh` - Master driver: runs spotlight, hashing, and HTML generation in one shot.
 
 ## parallel_hash.sh
 
@@ -43,6 +45,12 @@ Each line in the output file has the format:
 The output file is sorted alphabetically when the run completes (for later lookup and deduplication).
 
 A directory tree snapshot is saved to `tree_<dirname>.txt` in the output directory (`--outdir`, defaults to current directory).
+
+A one-line disk summary is saved to `disk_<dirname>.txt` with the format:
+
+```
+DISKNAME | total: 16.0T | used: 15.3T | free: 680.0G
+```
 
 Errors and failed files are logged to `hash_errors.log`. This should generally be an empty file.
 
@@ -194,6 +202,69 @@ A single self-contained `.html` file that can be opened in any browser. The tree
 ```bash
 # Produces html_CPT01.html in the same folder as the input file
 python3 tree_to_html.py /Volumes/Backup/hashes/tree_CPT01.txt
+```
+
+## plot_disk_usage.py
+
+A Python script that reads all `disk_*.txt` files in a directory (produced by `parallel_hash.sh`) and renders a horizontal bar chart showing used and free space for each drive. Useful for quickly identifying which drives have room for new data.
+
+### Usage
+
+```bash
+python3 plot_disk_usage.py <directory> [--out OUTPUT.png]
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `directory` | | Directory containing `disk_*.txt` files |
+| `--out` | `all_disk_usage.png` in the input directory | Path to write the output image |
+
+### Dependencies
+
+- Python 3
+- `matplotlib` — install with `pip install matplotlib` or `conda install matplotlib`
+
+### Output
+
+A PNG image with one horizontal bar per disk. Each bar shows used space (red) and free space (teal). The free space label is displayed prominently to the right of each bar since that is the key number when looking for a drive with capacity.
+
+### Examples
+
+```bash
+# Read all disk_*.txt in the current directory, write all_disk_usage.png
+python3 plot_disk_usage.py .
+
+# Specify an output path
+python3 plot_disk_usage.py ~/archives --out ~/Desktop/disk_report.png
+```
+
+## archive_disk.sh
+
+A master driver script that runs the full archive pipeline for a single volume in one shot: disables Spotlight, hashes all files, and builds the HTML tree viewer.
+
+### Usage
+
+```bash
+./archive_disk.sh /Volumes/DISK_NAME [--outdir DIR] [--jobs N]
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `/Volumes/DISK_NAME` | | Mounted volume to archive |
+| `--outdir` | current directory | Where to write all output files |
+| `--jobs` | `4` | Number of parallel hash workers |
+
+### What It Does
+
+1. Runs `turn_off_spotlight.sh` on the volume (will prompt for sudo password).
+2. Runs `parallel_hash.sh`, producing `hashes_DISK.txt`, `tree_DISK.txt`, and `disk_DISK.txt`.
+3. Runs `tree_to_html.py` on the resulting tree file, producing `html_DISK.html`.
+
+### Examples
+
+```bash
+./archive_disk.sh /Volumes/CPT01
+./archive_disk.sh /Volumes/CPT01 --outdir ~/archives --jobs 8
 ```
 
 ## sync_and_verify.sh
