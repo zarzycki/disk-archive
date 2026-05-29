@@ -98,6 +98,7 @@ if [[ -f "$OUTFILE" ]]; then
       echo "Warning: $STALE_COUNT stale entry/entries detected but removal skipped for legacy MD5-format file." >&2
     else
       echo "$STALE_COUNT stale entry/entries found (deleted from disk) — removing from $OUTFILE..."
+      cat "$STALE_TMP"
       CLEANED=$(mktemp)
       awk 'NR==FNR{stale[$0]=1; next} !($2 in stale)' "$STALE_TMP" "$OUTFILE" > "$CLEANED"
       mv "$CLEANED" "$OUTFILE"
