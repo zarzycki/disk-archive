@@ -165,10 +165,10 @@ A Python script that converts a `tree -s` directory snapshot into a self-contain
 ### Usage
 
 ```bash
-python3 tree_to_html.py tree_XXXXX.txt
+python3 tree_to_html.py /path/to/tree_XXXXX.txt
 ```
 
-The output file is named `html_XXXXX.html` in the same directory, where `XXXXX` matches the suffix of the input file.
+The output file is named `html_XXXXX.html` and is always written to the same directory as the input file, regardless of where the script is invoked from.
 
 | Argument | Description |
 |---|---|
@@ -192,8 +192,8 @@ A single self-contained `.html` file that can be opened in any browser. The tree
 ### Examples
 
 ```bash
-# Produces html_CPT01.html from tree_CPT01.txt
-python3 tree_to_html.py tree_CPT01.txt
+# Produces html_CPT01.html in the same folder as the input file
+python3 tree_to_html.py /Volumes/Backup/hashes/tree_CPT01.txt
 ```
 
 ## sync_and_verify.sh
