@@ -19,6 +19,9 @@ shift
 
 OUTDIR="$(pwd)"
 JOBS=4
+# Use active conda env's python if available, otherwise fall back to system python3
+PYTHON="${CONDA_PREFIX:+${CONDA_PREFIX}/bin/python3}"
+PYTHON="${PYTHON:-python3}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -46,6 +49,7 @@ echo "  archive_disk: $VOL_NAME"
 echo "  volume : $VOLPATH"
 echo "  outdir : $OUTDIR"
 echo "  jobs   : $JOBS"
+echo "  python : $PYTHON"
 echo "========================================"
 
 # Step 1: disable Spotlight
@@ -62,12 +66,12 @@ echo ">>> [2/3] Hashing files in $VOLPATH"
 # Step 3: build HTML viewer from the tree file parallel_hash produced
 echo ""
 echo ">>> [3/4] Building HTML viewer from $TREE_FILE"
-python3 "$SCRIPT_DIR/tree_to_html.py" "$TREE_FILE"
+$PYTHON "$SCRIPT_DIR/tree_to_html.py" "$TREE_FILE"
 
 # Step 4: build disk usage chart (optional — skipped gracefully if matplotlib is missing)
 echo ""
 echo ">>> [4/4] Building disk usage chart"
-if python3 "$SCRIPT_DIR/plot_disk_usage.py" "$OUTDIR"; then
+if $PYTHON "$SCRIPT_DIR/plot_disk_usage.py" "$OUTDIR"; then
   CHART_LINE="  Chart  : ${OUTDIR}/all_disk_usage.png"
 else
   CHART_LINE="  Chart  : skipped (see error above)"
