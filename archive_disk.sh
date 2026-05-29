@@ -61,8 +61,17 @@ echo ">>> [2/3] Hashing files in $VOLPATH"
 
 # Step 3: build HTML viewer from the tree file parallel_hash produced
 echo ""
-echo ">>> [3/3] Building HTML viewer from $TREE_FILE"
+echo ">>> [3/4] Building HTML viewer from $TREE_FILE"
 python3 "$SCRIPT_DIR/tree_to_html.py" "$TREE_FILE"
+
+# Step 4: build disk usage chart (optional — skipped gracefully if matplotlib is missing)
+echo ""
+echo ">>> [4/4] Building disk usage chart"
+if python3 "$SCRIPT_DIR/plot_disk_usage.py" "$OUTDIR"; then
+  CHART_LINE="  Chart  : ${OUTDIR}/all_disk_usage.png"
+else
+  CHART_LINE="  Chart  : skipped (see error above)"
+fi
 
 echo ""
 echo "========================================"
@@ -70,4 +79,5 @@ echo "  Done."
 echo "  Hashes : ${OUTDIR}/hashes_${VOL_NAME}.txt"
 echo "  Tree   : $TREE_FILE"
 echo "  HTML   : ${OUTDIR}/html_${VOL_NAME}.html"
+echo "$CHART_LINE"
 echo "========================================"
