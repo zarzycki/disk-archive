@@ -49,7 +49,10 @@ done
 
 # --- Figure out total files ---
 
-TOTAL=$(find "$DIR" \( -path '*/.*' -prune \) -o -type f -size +1k -print | wc -l | tr -d ' ')
+# Sorted so ALL_FILES_TMP can be used with comm (which requires sorted inputs)
+ALL_FILES_TMP=$(mktemp)
+find "$DIR" \( -path '*/.*' -prune \) -o -type f -size +1k -print | sort > "$ALL_FILES_TMP"
+TOTAL=$(wc -l < "$ALL_FILES_TMP" | tr -d ' ')
 echo "Total files: $TOTAL"
 
 # --- Save directory tree (optional preview of contents) ---
@@ -86,10 +89,9 @@ if [[ -f "$OUTFILE" ]]; then
   echo "$(wc -l < "$HASHED_TMP") file(s) already hashed — will be skipped."
 
   # Remove stale entries: files recorded in a previous run but since deleted from disk
-  CURRENT_TMP=$(mktemp)
-  find "$DIR" \( -path '*/.*' -prune \) -o -type f -size +1k -print | sort > "$CURRENT_TMP"
+  # comm -23: keep only lines unique to HASHED_TMP (i.e., not on disk anymore)
   STALE_TMP=$(mktemp)
-  comm -23 "$HASHED_TMP" "$CURRENT_TMP" > "$STALE_TMP"
+  comm -23 "$HASHED_TMP" "$ALL_FILES_TMP" > "$STALE_TMP"
   STALE_COUNT=$(wc -l < "$STALE_TMP" | tr -d ' ')
   if [[ "$STALE_COUNT" -gt 0 ]]; then
     if [[ "$MD5_FORMAT" == true ]]; then
@@ -103,10 +105,20 @@ if [[ -f "$OUTFILE" ]]; then
   else
     echo "No stale entries found."
   fi
-  rm -f "$CURRENT_TMP" "$STALE_TMP"
+  rm -f "$STALE_TMP"
 else
   echo "Hash file does not exist. All files will be hashed."
 fi
+
+# --- Compute files to hash this run ---
+# comm -23: keep only lines unique to ALL_FILES_TMP (i.e., not yet hashed)
+TO_HASH_TMP=$(mktemp)
+comm -23 "$ALL_FILES_TMP" "$HASHED_TMP" > "$TO_HASH_TMP"
+rm -f "$ALL_FILES_TMP" "$HASHED_TMP"
+TO_HASH_COUNT=$(wc -l < "$TO_HASH_TMP" | tr -d ' ')
+SKIP_COUNT=$(( TOTAL - TO_HASH_COUNT ))
+TOTAL=$TO_HASH_COUNT
+echo "Files to hash: $TOTAL (skipping $SKIP_COUNT already hashed)"
 
 # --- Create temp files and lock file ---
 
@@ -116,14 +128,10 @@ COUNTER=$(mktemp)
 FAILED=$(mktemp)
 # Create a temporary file to use as a lock for synchronizing access to COUNTER and FAILED
 LOCK=$(mktemp)
-# Create a temporary file to store the count of skipped files
-SKIPPED=$(mktemp)
 # Initialize the COUNTER file with 0 (no files processed yet)
 echo 0 > "$COUNTER"
 # Initialize the FAILED file with 0 (no failures yet)
 echo 0 > "$FAILED"
-# Initialize with 0
-echo 0 > "$SKIPPED"
 # Truncate (or create) the error log file to start fresh
 if [[ ! -f "$ERROR_LOG" ]]; then
   > "$ERROR_LOG"
@@ -148,33 +156,24 @@ fi
 # Note:
 #   - This function is exported and executed in parallel by `xargs`.
 #   - It relies on global environment variables: $TOOL, $COUNTER, $FAILED,
-#     $SKIPPED, $LOCK, $OUTFILE, $TOTAL, $ERROR_LOG, $HASHED_TMP.
+#     $LOCK, $OUTFILE, $TOTAL, $ERROR_LOG.
 # -----------------------------------------------------------------------------
 hash_and_count() {
     FILE="$1"
 
-    if grep -Fxq "$FILE" "$HASHED_TMP"; then
-        # Increment both skipped and total processed counters
-        flock "$LOCK" bash -c "
-            echo \$((\$(<\"$SKIPPED\") + 1)) > \"$SKIPPED\"
-            echo \$((\$(<\"$COUNTER\") + 1)) > \"$COUNTER\"
-        "
+    # Run the hash tool on the file, capture output if successful, log errors if not
+    if HASH=$("$TOOL" "$FILE" 2>> "$ERROR_LOG"); then
+        SIZE=$(stat -f%z "$FILE" 2>/dev/null)
+        MODIFIED=$(stat -f"%Sm" -t "%Y-%m-%d %H:%M:%S" "$FILE" 2>/dev/null)
+
+        echo "$HASH | size: ${SIZE:-N/A} bytes | modified: ${MODIFIED:-N/A}" >> "$OUTFILE"
+
+        flock "$LOCK" bash -c "echo \$((\$(<\"$COUNTER\") + 1)) > \"$COUNTER\""
     else
-        # Run the hash tool on the file, capture output if successful, log errors if not
-        if HASH=$("$TOOL" "$FILE" 2>> "$ERROR_LOG"); then
-            SIZE=$(stat -f%z "$FILE" 2>/dev/null)
-            MODIFIED=$(stat -f"%Sm" -t "%Y-%m-%d %H:%M:%S" "$FILE" 2>/dev/null)
-
-            echo "$HASH | size: ${SIZE:-N/A} bytes | modified: ${MODIFIED:-N/A}" >> "$OUTFILE"
-
-            flock "$LOCK" bash -c "echo \$((\$(<\"$COUNTER\") + 1)) > \"$COUNTER\""
-        else
-            flock "$LOCK" bash -c "echo \$((\$(<\"$FAILED\") + 1)) > \"$FAILED\""
-            echo "FAILED: $FILE" >> "$ERROR_LOG"
-        fi
+        flock "$LOCK" bash -c "echo \$((\$(<\"$FAILED\") + 1)) > \"$FAILED\""
+        echo "FAILED: $FILE" >> "$ERROR_LOG"
     fi
 
-    # Always print progress, no matter if skipped, failed, or succeeded
     COUNT=$(<"$COUNTER")
     FAIL=$(<"$FAILED")
     printf "\rProcessed: %d of %d (Failed: %d)" "$COUNT" "$TOTAL" "$FAIL" >&2
@@ -182,14 +181,13 @@ hash_and_count() {
 
 
 export -f hash_and_count
-export COUNTER FAILED SKIPPED LOCK TOOL OUTFILE TOTAL ERROR_LOG
-export HASHED_TMP
+export COUNTER FAILED LOCK TOOL OUTFILE TOTAL ERROR_LOG
 
 # --- Time the hashing ---
 START_TIME=$(date +%s)
 
-# Find all non-hidden files >1KB and hash them in parallel using xargs and hash_and_count
-find "$DIR" \( -path '*/.*' -prune \) -o -type f -size +1k -print0 | xargs -0 -n 1 -P "$JOBS" bash -c 'hash_and_count "$1"' _
+# Feed only unhashed files to the parallel workers
+tr '\n' '\0' < "$TO_HASH_TMP" | xargs -0 -n 1 -P "$JOBS" bash -c 'hash_and_count "$1"' _
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -197,11 +195,11 @@ DURATION=$((END_TIME - START_TIME))
 echo -e "\nDone in $DURATION seconds."
 echo "Successful: $(<"$COUNTER")"
 echo "Failed:     $(<"$FAILED")"
-echo "Skipped:    $(<"$SKIPPED")"
+echo "Skipped:    $SKIP_COUNT"
 echo "Results saved to: $OUTFILE"
 echo "Errors logged to: $ERROR_LOG"
 
 echo "Sorting output..."
 sort "$OUTFILE" -o "$OUTFILE"
 
-rm "$COUNTER" "$FAILED" "$SKIPPED" "$LOCK" "$HASHED_TMP"
+rm "$COUNTER" "$FAILED" "$LOCK" "$TO_HASH_TMP"
