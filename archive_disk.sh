@@ -12,6 +12,8 @@ usage() {
 
 if [[ $# -lt 1 ]]; then usage; fi
 
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then usage; fi
+
 VOLPATH="$1"
 shift
 
