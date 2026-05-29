@@ -58,7 +58,18 @@ echo "Total files: $TOTAL"
 # --- Save disk usage summary ---
 DISK_OUT="${OUTDIR}/disk_${VOL_NAME}.txt"
 echo "Saving disk summary to $DISK_OUT ..."
-read -r DF_TOTAL DF_USED DF_FREE _ < <(df -H "$DIR" | awk 'NR==2 {print $2, $3, $4, $5}')
+read -r DF_TOTAL_KB DF_USED_KB DF_FREE_KB < <(df -k "$DIR" | awk 'NR==2 {print $2, $3, $4}')
+fmt_kb() {
+  awk -v n="$1" 'BEGIN {
+    if      (n >= 1073741824) printf "%.1fT", n/1073741824
+    else if (n >= 1048576)    printf "%.1fG", n/1048576
+    else if (n >= 1024)       printf "%.1fM", n/1024
+    else                      printf "%dK",   n
+  }'
+}
+DF_TOTAL=$(fmt_kb "$DF_TOTAL_KB")
+DF_USED=$(fmt_kb "$DF_USED_KB")
+DF_FREE=$(fmt_kb "$DF_FREE_KB")
 echo "${VOL_NAME} | total: ${DF_TOTAL} | used: ${DF_USED} | free: ${DF_FREE}" | tee "$DISK_OUT"
 
 # --- Save directory tree (optional preview of contents) ---
