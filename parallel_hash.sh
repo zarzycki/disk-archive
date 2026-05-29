@@ -55,6 +55,12 @@ find "$DIR" \( -path '*/.*' -prune \) -o -type f -size +1k -print | sort > "$ALL
 TOTAL=$(wc -l < "$ALL_FILES_TMP" | tr -d ' ')
 echo "Total files: $TOTAL"
 
+# --- Save disk usage summary ---
+DISK_OUT="${OUTDIR}/disk_${VOL_NAME}.txt"
+echo "Saving disk summary to $DISK_OUT ..."
+read -r DF_TOTAL DF_USED DF_FREE _ < <(df -H "$DIR" | awk 'NR==2 {print $2, $3, $4, $5}')
+echo "${VOL_NAME} | total: ${DF_TOTAL} | used: ${DF_USED} | free: ${DF_FREE}" | tee "$DISK_OUT"
+
 # --- Save directory tree (optional preview of contents) ---
 TREE_OUT="${OUTDIR}/tree_${VOL_NAME}.txt"
 
