@@ -61,10 +61,11 @@ echo "Saving disk summary to $DISK_OUT ..."
 read -r DF_TOTAL_KB DF_USED_KB DF_FREE_KB < <(df -k "$DIR" | awk 'NR==2 {print $2, $3, $4}')
 fmt_kb() {
   awk -v n="$1" 'BEGIN {
-    if      (n >= 1073741824) printf "%.1fT", n/1073741824
-    else if (n >= 1048576)    printf "%.1fG", n/1048576
-    else if (n >= 1024)       printf "%.1fM", n/1024
-    else                      printf "%dK",   n
+    b = n * 1024
+    if      (b >= 1e12) printf "%.1fT", b/1e12
+    else if (b >= 1e9)  printf "%.1fG", b/1e9
+    else if (b >= 1e6)  printf "%.1fM", b/1e6
+    else                printf "%.1fK", b/1e3
   }'
 }
 DF_TOTAL=$(fmt_kb "$DF_TOTAL_KB")
