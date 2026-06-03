@@ -8,6 +8,7 @@ Set of scripts for maintaining external MEWAC hard drives. General order is:
 - `tree_to_html.py` - Convert a tree file into an interactive HTML viewer.
 - `plot_disk_usage.py` - Visualize free/used space across all drives as a bar chart.
 - `archive_disk.sh` - Master driver: runs spotlight, hashing, and HTML generation in one shot.
+- `combine_html.py` - Combine all `html_*.html` files into a single master search index.
 
 ## Python environment
 
@@ -213,6 +214,50 @@ A single self-contained `.html` file that can be opened in any browser. The tree
 ```bash
 # Produces html_CPT01.html in the same folder as the input file
 python3 tree_to_html.py /Volumes/Backup/hashes/tree_CPT01.txt
+```
+
+## combine_html.py
+
+A Python script that combines all `html_*.html` disk viewers in a directory into a single lightweight master search index (`html_ALL.html`). Strips sizes and dates from each disk's node tree to keep the combined file smaller than any one individual viewer.
+
+### Usage
+
+```bash
+python3 combine_html.py [directory]
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `directory` | `.` | Directory containing `html_*.html` files |
+
+### Dependencies
+
+- Python 3 — standard on macOS
+
+### Output
+
+`html_ALL.html` in the same directory — a self-contained search page that indexes all disks. Each result shows a disk badge (linked to that disk's individual HTML viewer) and the full file path.
+
+### Features
+
+- **Cross-disk search** — one search box queries all disks simultaneously
+- **Disk badge links** — click the disk label on any result to open that disk's full tree viewer
+- **Wildcard support** — `*` (any characters) and `?` (one character), e.g. `*.nc`
+- **Compact index** — stores only the tree structure (names + children), not sizes or dates, so the combined file is smaller than the sum of its parts
+
+### Notes
+
+- `html_ALL.html` is automatically excluded when globbing `html_*.html`, so re-running is safe.
+- The per-disk `html_DISKNAME.html` files must stay in the same directory as `html_ALL.html` for the badge links to work.
+
+### Examples
+
+```bash
+# Combine all html_*.html in the current directory
+python3 combine_html.py
+
+# Combine from a specific directory
+python3 combine_html.py ~/archives
 ```
 
 ## plot_disk_usage.py
