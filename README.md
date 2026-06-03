@@ -61,7 +61,7 @@ A directory tree snapshot is saved to `tree_<dirname>.txt` in the output directo
 A one-line disk summary is saved to `disk_<dirname>.txt` with the format:
 
 ```
-DISKNAME | total: 16.0T | used: 15.3T | free: 680.0G
+DISKNAME | total: 16.0T | used: 15.3T | free: 680.0G | fs: APFS
 ```
 
 Errors and failed files are logged to `hash_errors.log`. This should generally be an empty file.

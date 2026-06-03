@@ -71,7 +71,13 @@ fmt_kb() {
 DF_TOTAL=$(fmt_kb "$DF_TOTAL_KB")
 DF_USED=$(fmt_kb "$DF_USED_KB")
 DF_FREE=$(fmt_kb "$DF_FREE_KB")
-echo "${VOL_NAME} | total: ${DF_TOTAL} | used: ${DF_USED} | free: ${DF_FREE}" | tee "$DISK_OUT"
+if command -v diskutil >/dev/null 2>&1; then
+  FS_TYPE=$(diskutil info "$DIR" 2>/dev/null | awk -F': +' '/File System Personality/ {print $2}' | xargs)
+  FS_TYPE="${FS_TYPE:-unknown}"
+else
+  FS_TYPE="unknown"
+fi
+echo "${VOL_NAME} | total: ${DF_TOTAL} | used: ${DF_USED} | free: ${DF_FREE} | fs: ${FS_TYPE}" | tee "$DISK_OUT"
 
 # --- Save directory tree (optional preview of contents) ---
 TREE_OUT="${OUTDIR}/tree_${VOL_NAME}.txt"
