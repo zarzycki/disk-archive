@@ -33,8 +33,8 @@ if [ $# -lt 2 ] || [ $# -gt 3 ]; then
   exit 1
 fi
 
-SRC="$1"
-DEST="$2"
+SRC="${1%/}"
+DEST="${2%/}"
 TOOL="${3:-xxhsum}"
 
 if ! command -v "$TOOL" >/dev/null 2>&1; then
@@ -61,8 +61,11 @@ find "$DEST" -type f -exec sh -c '
     echo "$hash  $rel"
 ' _ {} "$DEST" "$TOOL" \; > "DEST_checksums.txt"
 
-# Compare checksum files
-if [ $(diff "SRC_checksums.txt" "DEST_checksums.txt" | wc -l) -eq 0 ]; then
+# Compare checksum files (sort first — find traversal order is not guaranteed)
+sort "SRC_checksums.txt" -o "SRC_checksums.txt"
+sort "DEST_checksums.txt" -o "DEST_checksums.txt"
+
+if diff -q "SRC_checksums.txt" "DEST_checksums.txt" >/dev/null; then
   echo "Directories are identical. Deleting source directory."
   echo "rm -rfv $SRC"
   #rm -rfv "$SRC"

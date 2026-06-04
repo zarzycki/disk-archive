@@ -343,7 +343,7 @@ A Bash script that copies a source directory to a destination with `rsync`, then
 
 1. Syncs `SRC/` → `DEST/` using `rsync -av --progress --stats`.
 2. Generates `SRC_checksums.txt` and `DEST_checksums.txt` by hashing every file in each directory using relative paths.
-3. Diffs the two checksum files.
+3. Sorts and diffs the two checksum files (sorting ensures `find` traversal order differences don't cause false mismatches).
 4. If they match, prints the `rm -rfv` command that would delete the source (the actual `rm` line is commented out for safety).
 5. If they differ, prints the diff output so mismatches can be identified.
 
