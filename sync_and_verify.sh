@@ -27,6 +27,9 @@
 # - Trailing slashes on SRC/DEST are stripped automatically, so both are safe.
 # - Checksum files are sorted before comparison (and left sorted on disk), so
 #   it doesn't matter if SRC and DEST are traversed in a different order.
+# - Files listed in IGNORE_FILES (basename match, e.g. .DS_Store) are skipped
+#   when generating checksums, since Finder/OS metadata files can appear on
+#   one side but not the other without indicating a real sync problem.
 # - The rm command that would delete the source is commented out for safety;
 #   uncomment it in the script once you are confident the transfer is correct.
 # - Checksum cleanup lines are also commented out; remove them manually after
@@ -41,6 +44,14 @@ SRC="${1%/}"
 DEST="${2%/}"
 TOOL="${3:-xxhsum}"
 
+# Filenames (basename match) to skip when generating checksums
+IGNORE_FILES=(".DS_Store")
+
+FIND_IGNORE_ARGS=()
+for f in "${IGNORE_FILES[@]}"; do
+  FIND_IGNORE_ARGS+=(! -name "$f")
+done
+
 if ! command -v "$TOOL" >/dev/null 2>&1; then
   echo "Error: hash tool '$TOOL' is not installed or not in PATH." >&2
   echo "Install xxhsum with: brew install xxhash" >&2
@@ -52,14 +63,14 @@ rsync -av --progress --stats "$SRC/" "$DEST/"
 
 # Generate checksums in the source directory
 # $2=root dir, $3=tool; xxhsum/md5sum/sha256sum output hash as first field; md5 (macOS) needs -q for hash-only output
-find "$SRC" -type f -exec sh -c '
+find "$SRC" -type f "${FIND_IGNORE_ARGS[@]}" -exec sh -c '
     rel="${1#$2/}"
     if [ "$3" = "md5" ]; then hash=$(md5 -q "$1"); else hash=$("$3" "$1" | awk "{print \$1}"); fi
     echo "$hash  $rel"
 ' _ {} "$SRC" "$TOOL" \; > "SRC_checksums.txt"
 
 # Generate checksums in the destination directory
-find "$DEST" -type f -exec sh -c '
+find "$DEST" -type f "${FIND_IGNORE_ARGS[@]}" -exec sh -c '
     rel="${1#$2/}"
     if [ "$3" = "md5" ]; then hash=$(md5 -q "$1"); else hash=$("$3" "$1" | awk "{print \$1}"); fi
     echo "$hash  $rel"
