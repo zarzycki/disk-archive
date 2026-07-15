@@ -22,7 +22,11 @@
 # ./sync_and_verify.sh /Volumes/3KM_DOWNSCALING/jpan/ /Volumes/ERASED
 #
 # Note:
-# - Requires rsync and a hash tool (default: xxhsum; install with brew install xxhash).
+# - Requires rsync and a hash tool (default: xxhsum; install with
+#   `brew install xxhash` on macOS or `apt install xxhash` on Ubuntu/Debian).
+# - Trailing slashes on SRC/DEST are stripped automatically, so both are safe.
+# - Checksum files are sorted before comparison (and left sorted on disk), so
+#   it doesn't matter if SRC and DEST are traversed in a different order.
 # - The rm command that would delete the source is commented out for safety;
 #   uncomment it in the script once you are confident the transfer is correct.
 # - Checksum cleanup lines are also commented out; remove them manually after
